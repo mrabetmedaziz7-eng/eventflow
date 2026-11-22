@@ -1,0 +1,76 @@
+name: eventflow
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB est obligatoire}
+      POSTGRES_USER: ${DB_USERNAME:?DB_USERNAME est obligatoire}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD est obligatoire}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      - eventflow-net
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    image: eventflow-backend:1.1
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_ADDRESS: 0.0.0.0
+      DB_URL: ${DB_URL:?DB_URL est obligatoire}
+      DB_USERNAME: ${DB_USERNAME:?DB_USERNAME est obligatoire}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD est obligatoire}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET est obligatoire}
+      CORS_ALLOWED_ORIGINS: http://localhost:${PROXY_PORT:-8080}
+      PAYMENT_API_KEY: ${PAYMENT_API_KEY:?PAYMENT_API_KEY est obligatoire}
+      PAYMENT_SECRET_KEY: ${PAYMENT_SECRET_KEY:?PAYMENT_SECRET_KEY est obligatoire}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL est obligatoire}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD est obligatoire}
+    networks:
+      - eventflow-net
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ""
+    image: eventflow-frontend:1.1
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - eventflow-net
+    restart: unless-stopped
+
+  proxy:
+    build: ./proxy
+    image: eventflow-proxy:1.1
+    ports:
+      - "${PROXY_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    networks:
+      - eventflow-net
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+
+networks:
+  eventflow-net:
+    driver: bridge
