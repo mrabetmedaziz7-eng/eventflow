@@ -7,8 +7,11 @@ required=(
   .gitignore
   .gitattributes
   .env.example
+  .env.staging.example
   .github/workflows/ci.yml
   compose.yaml
+  compose.staging.yaml
+  scripts/wait-healthy.sh
   backend/.env.example
   backend/pom.xml
   backend/mvnw
