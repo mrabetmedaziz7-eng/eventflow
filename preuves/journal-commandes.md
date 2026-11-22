@@ -436,3 +436,81 @@ WAIT_DEGRADED_EXIT=1
 $ docker run --rm -u 1002:1002 -v /home/aziz/devops-l3/projet:/repo -w /repo rhysd/actionlint:1.7.7 .github/workflows/ci.yml .github/workflows/release.yml
 EXIT=0 (aucune erreur ni avertissement)
 ```
+
+### Fusion PR #11, tag `v1.0.0` et mise en service staging `v1.0.0` (`STAGING_PORT=8089`)
+```text
+*   dcecb4c (origin/main, main, tag: v1.0.0) Merge pull request #11 from mrabetmedaziz7-eng/feat/release
+
+$ docker compose --env-file .env --env-file .env.deploy -f compose.staging.yaml pull
+$ docker compose --env-file .env --env-file .env.deploy -f compose.staging.yaml up -d
+$ ./scripts/wait-healthy.sh
+[OK] db healthy
+[OK] backend healthy
+[OK] frontend healthy
+[OK] proxy healthy
+[OK] http://127.0.0.1:8089/health et / répondent
+[OK] staging sain (eventflow-staging, port 8089)
+
+# Donnée de test créée et publiée avant incident (volume pgdata_staging) :
+$ curl -fsS http://127.0.0.1:8089/api/events
+[{"id": 1, "title": "Test Persistance Rollback", "status": "PUBLIE"}]
+```
+
+## Étape 7 — Incident `v1.1.0` et retour arrière vers `v1.0.0`
+
+### 1. Publication défectueuse `v1.1.0` (branche jetable `demo/release-defectueuse`, jamais fusionnée)
+```text
+$ git tag -a v1.1.0 -m "Release 1.1.0 (demo defectueuse - ne pas deployer)"
+$ git push origin v1.1.0
+$ docker manifest inspect ghcr.io/mrabetmedaziz7-eng/eventflow-backend:v1.1.0  # sha256:3be4d4d2...
+$ docker manifest inspect ghcr.io/mrabetmedaziz7-eng/eventflow-frontend:v1.1.0 # sha256:241f0865...
+$ docker manifest inspect ghcr.io/mrabetmedaziz7-eng/eventflow-proxy:v1.1.0    # sha256:54a878a7...
+```
+
+### 2. Mise en service défectueuse (`IMAGE_TAG=v1.1.0` dans `.env.deploy`) et diagnostic
+```text
+$ docker compose --env-file .env --env-file .env.deploy -f compose.staging.yaml up -d
+dependency failed to start: container eventflow-staging-backend-1 is unhealthy
+UP_V110_EXIT=1
+
+$ WAIT_TIMEOUT=10 WAIT_INTERVAL=2 ./scripts/wait-healthy.sh
+[ERREUR] staging non sain après 10s : service backend état=running:unhealthy
+WAIT_V110_EXIT=1
+
+$ docker compose --env-file .env --env-file .env.deploy -f compose.staging.yaml ps -a
+eventflow-staging-backend-1    ghcr.io/mrabetmedaziz7-eng/eventflow-backend:v1.1.0    Up About a minute (unhealthy)   2525/tcp
+eventflow-staging-db-1         postgres:17-alpine                                     Up 26 minutes (healthy)         5432/tcp
+eventflow-staging-frontend-1   ghcr.io/mrabetmedaziz7-eng/eventflow-frontend:v1.1.0   Created
+eventflow-staging-proxy-1      ghcr.io/mrabetmedaziz7-eng/eventflow-proxy:v1.1.0      Created
+
+$ docker compose --env-file .env --env-file .env.deploy -f compose.staging.yaml logs --tail=80 backend | grep -E "ERROR|Healthcheck|BrokenHealthIndicator|Started EventsApplication" | tail -n 3
+backend-1  | 2026-11-22T20:02:08.650Z  INFO 1 --- [eventflow-backend] [           main] com.iset.events.EventsApplication        : Started EventsApplication in 8.162 seconds (process running for 8.72)
+backend-1  | 2026-11-22T20:02:10.147Z ERROR 1 --- [eventflow-backend] [0.0-2525-exec-1] c.i.events.health.BrokenHealthIndicator  : Healthcheck /health en echec simule (v1.1.0) : retour HTTP 500 (database=down)
+```
+
+### 3. Retour arrière (`IMAGE_TAG=v1.0.0`, aucun build, aucun `down -v`) et vérification persistance
+```text
+$ docker compose --env-file .env --env-file .env.deploy -f compose.staging.yaml pull
+$ docker compose --env-file .env --env-file .env.deploy -f compose.staging.yaml up -d
+UP_V100_EXIT=0
+
+$ ./scripts/wait-healthy.sh
+[OK] db healthy
+[OK] backend healthy
+[OK] frontend healthy
+[OK] proxy healthy
+[OK] http://127.0.0.1:8089/health et / répondent
+[OK] staging sain (eventflow-staging, port 8089)
+WAIT_V100_EXIT=0
+
+$ docker compose --env-file .env --env-file .env.deploy -f compose.staging.yaml ps
+eventflow-staging-backend-1    ghcr.io/mrabetmedaziz7-eng/eventflow-backend:v1.0.0    Up 23 seconds (healthy)   2525/tcp
+eventflow-staging-db-1         postgres:17-alpine                                     Up 26 minutes (healthy)   5432/tcp
+eventflow-staging-frontend-1   ghcr.io/mrabetmedaziz7-eng/eventflow-frontend:v1.0.0   Up 12 seconds (healthy)   3000/tcp
+eventflow-staging-proxy-1      ghcr.io/mrabetmedaziz7-eng/eventflow-proxy:v1.0.0      Up 7 seconds (healthy)    0.0.0.0:8089->8080/tcp
+
+$ curl -fsS http://127.0.0.1:8089/health
+{"status":"UP"}
+$ curl -fsS http://127.0.0.1:8089/api/events
+[{"id":1,"title":"Test Persistance Rollback","description":"Verification du volume pgdata_staging avant rollback","category":"DevOps","eventDate":"2026-12-15","startTime":"10:00:00","endTime":"12:00:00","location":"ISET Nabeul","imageUrl":null,"ticketPrice":0.00,"capacity":50,"availablePlaces":50,"status":"PUBLIE","teacherId":2,"teacher":{"id":2,"fullName":"Test Staging"},"actions":[],"createdAt":"2026-11-22T19:42:39.241652Z","updatedAt":"2026-11-22T19:42:39.265519Z"}]
+```
