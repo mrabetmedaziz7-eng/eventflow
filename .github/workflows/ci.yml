@@ -1,0 +1,131 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: eventflow_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U postgres -d eventflow_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Contrôler la structure et les secrets
+        run: ./scripts/check-project.sh
+
+      - name: Installer Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Exécuter les tests backend
+        working-directory: backend
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/eventflow_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: ci_test_password
+        run: ./mvnw -B verify
+
+      - name: Installer Node.js 22.19.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Installer les dépendances frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Analyser le code frontend (ESLint)
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Vérifier le typage TypeScript
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Exécuter les tests frontend (Vitest)
+        working-directory: frontend
+        run: npm test -- --reporter=default --reporter=junit --outputFile=test-results/vitest-junit.xml
+
+      - name: Construire le frontend (hors ligne pour les polices)
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: ""
+        run: npm run build
+
+      - name: Publier les rapports de tests
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports
+          path: |
+            backend/target/surefire-reports
+            frontend/test-results
+          retention-days: 7
+          if-no-files-found: warn
+
+  docker-build:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Valider compose.yaml avec .env.example
+        run: docker compose --env-file .env.example config -q
+
+      - name: Configurer Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Construire l'image backend (sans push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          tags: eventflow-backend:ci
+
+      - name: Construire l'image frontend (sans push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: false
+          tags: eventflow-frontend:ci
+          build-args: |
+            NEXT_PUBLIC_API_URL=
+
+      - name: Construire l'image proxy (sans push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./proxy
+          push: false
+          tags: eventflow-proxy:ci
