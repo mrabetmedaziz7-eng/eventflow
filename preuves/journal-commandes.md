@@ -324,3 +324,39 @@ CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
 $ docker network ls
 bridge / host / none uniquement
 ```
+
+### Fusion PR #7
+```text
+*   ad51475 (origin/main, main) Merge pull request #7 from mrabetmedaziz7-eng/feat/compose
+```
+
+## Étape 5 — Intégration continue GitHub Actions (`feat/ci` et `ci-demo-rouge`)
+
+### 1. Validation statique du workflow (`actionlint`) et de Compose (`.env.example`)
+```text
+$ docker run --rm -u 1002:1002 -v /home/aziz/devops-l3/projet:/repo -w /repo rhysd/actionlint:1.7.7 .github/workflows/ci.yml
+EXIT=0 (aucune erreur ni avertissement)
+
+$ docker compose --env-file .env.example config -q
+EXIT=0
+```
+
+### 2. Rejeu local du job `test` en conteneurs (`-u 1002:1002`, sans secrets ni ports `8080`/`8081`)
+```text
+# Backend : service postgres:17-alpine (réseau temporaire eventflow-ci-net) + maven:3.9.9-eclipse-temurin-17
+$ ./mvnw -B verify
+[INFO] Results:
+[INFO] Tests run: 13, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+
+# Frontend : node:22.19.0 (NEXT_PUBLIC_API_URL="")
+$ npm ci && npm run lint && npx tsc --noEmit && npm test -- --reporter=default --reporter=junit --outputFile=test-results/vitest-junit.xml && npm run build
+- eslint : 0 errors, 10 warnings
+- tsc --noEmit : EXIT=0
+- vitest run : Test Files 7 passed (7), Tests 21 passed (21), JUNIT report written to /app/test-results/vitest-junit.xml
+- next build : Compiled successfully, 19/19 static pages generated
+
+# Nettoyage Docker et droits locaux
+$ docker ps -a && docker network ls
+(aucun conteneur ; réseaux bridge / host / none uniquement ; backend/target, frontend/.next et frontend/test-results détenus par aziz:aziz)
+```
