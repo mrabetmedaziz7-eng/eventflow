@@ -177,3 +177,67 @@ $ docker run --rm --network none -u 1002:1002 ... -e NEXT_PUBLIC_API_URL= ... no
  Test Files  7 passed (7)
       Tests  21 passed (21)
 ```
+
+### Fusion PR #5
+```text
+*   67c2ea5 (HEAD -> main, origin/main) Merge pull request #5 from mrabetmedaziz7-eng/feat/local-fonts
+```
+
+## Étape 3d — Dockerfiles durcis, `.dockerignore` et reverse proxy (`feat/dockerfiles`)
+
+### Tailles `1.0` vs `1.1` (`docker image ls 'eventflow-*'`)
+```text
+IMAGE                    ID             DISK USAGE   CONTENT SIZE
+eventflow-backend:1.0    28c7114b87f5        384MB          127MB
+eventflow-backend:1.1    17c36ae682b0        384MB          127MB
+eventflow-frontend:1.0   e5f374ac7057       1.04GB          252MB
+eventflow-frontend:1.1   cb7934b8f073        958MB          211MB
+eventflow-proxy:1.0      f9cfbb2c6204       73.6MB           21MB
+eventflow-proxy:1.1      fe04a5adb2b1       73.7MB           21MB
+```
+
+### Couches les plus lourdes (`docker history`)
+- `eventflow-backend:1.1` : JRE 17 (`141MB`) et `app.jar` (`62.8MB`) ; `COPY --chown=appuser:appgroup` évite la duplication de couche.
+- `eventflow-frontend:1.1` : `node_modules` prod (`561MB`), runtime Node 22.19.0 (`155MB`), `.next` sans `.next/cache` (`14.9MB`).
+- `eventflow-proxy:1.1` : base `nginxinc/nginx-unprivileged:1.27-alpine` (`38.7MB`), `nginx.conf` (`20.5kB`).
+
+### Démonstration du cache (commentaire temporaire dans `EventsApplication.java`)
+```text
+#9 [builder 3/6] COPY pom.xml .                    => CACHED
+#11 [builder 4/6] RUN mvn -B dependency:go-offline => CACHED
+#12 [builder 5/6] COPY src ./src                   => DONE 0.5s
+#13 [builder 6/6] RUN mvn -B package -DskipTests   => DONE 22.1s
+```
+
+### Utilisateurs non-root (`docker exec ... whoami`), `HEALTHCHECK` et `curl` via proxy
+```text
+=== WHOAMI ===
+backend:  appuser
+frontend: appuser
+proxy:    nginx
+
+=== HEALTH ===
+backend=healthy frontend=healthy proxy=healthy
+
+=== CURL VIA PROXY ===
+$ curl -fsS http://localhost:8080/health
+{"status":"UP"}
+$ curl -fsS http://localhost:8080/api/events
+[]
+$ curl -fsS -I http://localhost:8080/ | head -n 5
+HTTP/1.1 200 OK
+```
+
+### Incident volontaire (`SERVER_ADDRESS=127.0.0.1` sur `backend-casse`)
+```text
+$ docker ps -a --filter name=backend-casse
+backend-casse   eventflow-backend:1.1   Up 8 seconds (health: starting)   0.0.0.0:2526->2525/tcp
+$ docker logs --tail=10 backend-casse
+Tomcat started on port 2525 (http) with context path '/'
+Started EventsApplication in 6.539 seconds
+$ curl -fsSv --max-time 3 http://localhost:2526/health
+curl: (56) Recv failure: Connection reset by peer
+$ docker exec backend-casse wget -qO- http://127.0.0.1:2525/health
+{"status":"UP"}
+```
+**Explication (3 lignes)** : Le conteneur tourne (`Up`) et ses journaux n'affichent aucune erreur car Tomcat a bien démarré sur le port `2525`. En écoutant sur `127.0.0.1` (boucle locale interne), il rejette toute connexion venant de l'extérieur du conteneur (`Connection reset by peer` sur `localhost:2526`) alors que `wget` depuis l'intérieur répond `{"status":"UP"}`. L'adresse d'écoute d'un service conteneurisé doit rester `0.0.0.0`.
