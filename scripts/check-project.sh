@@ -6,12 +6,21 @@ required=(
   README.md
   .gitignore
   .gitattributes
+  .env.example
+  compose.yaml
   backend/.env.example
   backend/pom.xml
   backend/mvnw
+  backend/Dockerfile
+  backend/.dockerignore
   frontend/.env.example
   frontend/package.json
   frontend/package-lock.json
+  frontend/Dockerfile
+  frontend/.dockerignore
+  proxy/Dockerfile
+  proxy/.dockerignore
+  proxy/nginx.conf
 )
 
 echo "[CHECK] EventFlow"
