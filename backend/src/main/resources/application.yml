@@ -11,6 +11,15 @@ spring:
 server:
   port: 2525
 
+management:
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: health
+      discovery:
+        enabled: false
+
 app:
   bootstrap:
     admin:
