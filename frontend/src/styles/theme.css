@@ -48,6 +48,10 @@
 
   /* Shared radius */
   --ef-radius: 8px;
+
+  /* Local Fontsource font families */
+  --font-inter: "Inter";
+  --font-cairo: "Cairo";
 }
 
 html, body {
