@@ -1,0 +1,225 @@
+/**
+ * Theme "Campus bleu"
+ * Defined ONCE as CSS variables; overrides Bootstrap variables.
+ * No Tailwind, no color literals scattered across components.
+ */
+
+:root {
+  /* Brand palette */
+  --ef-navy: #1E3A8A;
+  --ef-primary: #2563EB;
+  --ef-primary-hover: #1D4ED8;
+  --ef-primary-rgb: 37, 99, 235;
+  --ef-bg: #F8FAFC;
+  --ef-text: #0F172A;
+  --ef-text-rgb: 15, 23, 42;
+  --ef-text-secondary: #475569;
+  --ef-border: #E2E8F0;
+  --ef-card-bg: #FFFFFF;
+  --ef-image-placeholder: #DBEAFE;
+  --ef-amber-accent: #F59E0B; /* decorative only, never for statuses */
+
+  /* Status colors (reserved) */
+  --ef-status-available-bg: #DCFCE7;
+  --ef-status-available-text: #166534;
+  --ef-status-almost-bg: #FFEDD5;
+  --ef-status-almost-text: #9A3412;
+  --ef-status-danger-bg: #FEE2E2;
+  --ef-status-danger-text: #991B1B;
+  --ef-status-pending-bg: #E2E8F0;
+  --ef-status-pending-text: #334155;
+
+  /* Bootstrap variable overrides */
+  --bs-primary: var(--ef-primary);
+  --bs-primary-rgb: var(--ef-primary-rgb);
+  --bs-body-bg: var(--ef-bg);
+  --bs-body-color: var(--ef-text);
+  --bs-body-color-rgb: var(--ef-text-rgb);
+  --bs-secondary-color: var(--ef-text-secondary);
+  --bs-border-color: var(--ef-border);
+  --bs-link-color: var(--ef-primary);
+  --bs-link-hover-color: var(--ef-primary-hover);
+  --bs-border-radius: 8px;
+  --bs-border-radius-sm: 6px;
+  --bs-border-radius-lg: 12px;
+  --bs-card-bg: var(--ef-card-bg);
+  --bs-card-border-color: var(--ef-border);
+  --bs-card-border-radius: 8px;
+
+  /* Shared radius */
+  --ef-radius: 8px;
+}
+
+html, body {
+  background-color: var(--ef-bg);
+  color: var(--ef-text);
+  min-height: 100vh;
+}
+
+/* Typography per language */
+html:not([lang="ar"]) body {
+  font-family: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+html[lang="ar"] body {
+  font-family: var(--font-cairo), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Controls and cards radius */
+.card,
+.form-control,
+.form-select,
+.btn,
+.input-group-text,
+.badge,
+.alert,
+.modal-content,
+.dropdown-menu {
+  border-radius: var(--ef-radius);
+}
+
+/* Primary buttons */
+.btn-primary {
+  background-color: var(--ef-primary);
+  border-color: var(--ef-primary);
+  color: #FFFFFF;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: var(--ef-primary-hover) !important;
+  border-color: var(--ef-primary-hover) !important;
+  color: #FFFFFF !important;
+}
+
+.btn-outline-primary {
+  color: var(--ef-primary);
+  border-color: var(--ef-primary);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus,
+.btn-outline-primary:active {
+  background-color: var(--ef-primary);
+  border-color: var(--ef-primary);
+  color: #FFFFFF;
+}
+
+/* Focus visibility for accessibility */
+.btn:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.45);
+  outline-offset: 2px;
+}
+
+/* Navbar: Navy #1E3A8A */
+.ef-navbar {
+  background-color: var(--ef-navy) !important;
+  color: #FFFFFF;
+}
+
+.ef-navbar .navbar-brand {
+  color: #FFFFFF !important;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.ef-navbar .nav-link {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.ef-navbar .nav-link:hover,
+.ef-navbar .nav-link:focus,
+.ef-navbar .nav-link.active {
+  color: #FFFFFF !important;
+}
+
+/* Status badges (reserved colors) */
+.ef-badge-available {
+  background-color: var(--ef-status-available-bg) !important;
+  color: var(--ef-status-available-text) !important;
+}
+
+.ef-badge-almost {
+  background-color: var(--ef-status-almost-bg) !important;
+  color: var(--ef-status-almost-text) !important;
+}
+
+.ef-badge-danger {
+  background-color: var(--ef-status-danger-bg) !important;
+  color: var(--ef-status-danger-text) !important;
+}
+
+.ef-badge-pending {
+  background-color: var(--ef-status-pending-bg) !important;
+  color: var(--ef-status-pending-text) !important;
+}
+
+/* Image placeholder */
+.ef-image-placeholder {
+  background-color: var(--ef-image-placeholder);
+  color: var(--ef-navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Amber accent (decorative only) */
+.ef-accent-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--ef-amber-accent);
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.ef-accent-bar {
+  width: 32px;
+  height: 4px;
+  background-color: var(--ef-amber-accent);
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* Cards elevation and style */
+.ef-card {
+  background-color: var(--ef-card-bg);
+  border: 1px solid var(--ef-border);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.ef-card-interactive:hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Secondary text */
+.ef-muted {
+  color: var(--ef-text-secondary);
+}
+
+/* Printable ticket */
+@media print {
+  body {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+  }
+  .ef-no-print {
+    display: none !important;
+  }
+  .ef-printable {
+    box-shadow: none !important;
+    border: 2px solid #000000 !important;
+    max-width: 100% !important;
+  }
+}
+
+/* RTL icon mirroring */
+html[dir="rtl"] .ef-flip-rtl {
+  transform: scaleX(-1);
+}
+
