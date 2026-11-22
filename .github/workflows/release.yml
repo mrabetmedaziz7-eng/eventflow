@@ -86,3 +86,68 @@ jobs:
           provenance: false
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/eventflow-proxy:${{ github.ref_name }}
           labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+  deploy-staging:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Se connecter à GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Préparer .env.staging et .env.deploy fictifs
+        run: |
+          db_pass=$(openssl rand -hex 16)
+          jwt_secret=$(openssl rand -base64 48 | tr -d '\n')
+          pay_key=$(openssl rand -hex 12)
+          pay_sec=$(openssl rand -hex 16)
+          admin_pass="Admin_$(openssl rand -hex 12)"
+          {
+            printf 'STAGING_PORT=8089\n'
+            printf 'POSTGRES_DB=eventflow_staging\n'
+            printf 'POSTGRES_USER=eventflow_staging\n'
+            printf 'POSTGRES_PASSWORD=%s\n' "$db_pass"
+            printf 'DB_URL=jdbc:postgresql://db:5432/eventflow_staging\n'
+            printf 'DB_USERNAME=eventflow_staging\n'
+            printf 'DB_PASSWORD=%s\n' "$db_pass"
+            printf 'JWT_SECRET=%s\n' "$jwt_secret"
+            printf 'PAYMENT_API_KEY=staging_pk_%s\n' "$pay_key"
+            printf 'PAYMENT_SECRET_KEY=staging_sk_%s\n' "$pay_sec"
+            printf 'ADMIN_EMAIL=admin.staging@example.com\n'
+            printf 'ADMIN_PASSWORD=%s\n' "$admin_pass"
+          } > .env.staging
+          chmod 600 .env.staging
+          printf 'IMAGE_TAG=%s\n' "${GITHUB_REF_NAME}" > .env.deploy
+
+      - name: Télécharger et démarrer la pile staging sans reconstruction
+        run: |
+          docker compose --env-file .env.staging --env-file .env.deploy -f compose.staging.yaml pull
+          docker compose --env-file .env.staging --env-file .env.deploy -f compose.staging.yaml up -d
+
+      - name: Contrôler la santé de la pile staging
+        run: ./scripts/wait-healthy.sh
+
+      - name: Collecter les journaux en cas d'échec
+        if: failure()
+        run: |
+          docker compose --env-file .env.staging --env-file .env.deploy -f compose.staging.yaml ps -a || true
+          docker compose --env-file .env.staging --env-file .env.deploy -f compose.staging.yaml logs --no-color --tail=100 || true
+
+      - name: Nettoyer la pile et les fichiers temporaires
+        if: always()
+        run: |
+          if [[ -f .env.staging && -f .env.deploy ]]; then
+            docker compose --env-file .env.staging --env-file .env.deploy -f compose.staging.yaml down -v || true
+          fi
+          rm -f .env.staging .env.deploy
