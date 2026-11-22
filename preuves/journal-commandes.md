@@ -241,3 +241,86 @@ $ docker exec backend-casse wget -qO- http://127.0.0.1:2525/health
 {"status":"UP"}
 ```
 **Explication (3 lignes)** : Le conteneur tourne (`Up`) et ses journaux n'affichent aucune erreur car Tomcat a bien démarré sur le port `2525`. En écoutant sur `127.0.0.1` (boucle locale interne), il rejette toute connexion venant de l'extérieur du conteneur (`Connection reset by peer` sur `localhost:2526`) alors que `wget` depuis l'intérieur répond `{"status":"UP"}`. L'adresse d'écoute d'un service conteneurisé doit rester `0.0.0.0`.
+
+### Fusion PR #6
+```text
+*   a33d6df (HEAD -> main, origin/main) Merge pull request #6 from mrabetmedaziz7-eng/feat/dockerfiles
+```
+
+## Étape 4 — Orchestration Docker Compose (`feat/compose`, projet `eventflow`, port `8088`)
+
+> **Ports réservés non utilisés** : `8080` et `8081` (réservés sur le poste). Port utilisé pour la pile Compose : `PROXY_PORT=8088` (vérifié libre via `ss -ltn`). `CORS_ALLOWED_ORIGINS` est dérivée directement de `PROXY_PORT` dans `compose.yaml`.
+
+### A. Validation `docker compose config -q` et variable obligatoire manquante
+```text
+$ docker compose config -q
+CONFIG_OK (exit=0)
+
+$ docker compose config | grep -E "^name:|CORS_ALLOWED_ORIGINS|published:"
+name: eventflow
+      CORS_ALLOWED_ORIGINS: http://localhost:8088
+        published: "8088"
+
+$ JWT_SECRET= docker compose config -q
+error while interpolating services.backend.environment.JWT_SECRET: required variable JWT_SECRET is missing a value: JWT_SECRET est obligatoire
+MISSING_VAR_EXIT=1
+```
+
+### B & C. Démarrage `up -d --build`, état `healthy` et `curl` sur `http://localhost:8088`
+```text
+$ docker compose ps
+NAME                   IMAGE                    COMMAND                  SERVICE    CREATED          STATUS                    PORTS
+eventflow-backend-1    eventflow-backend:1.1    "/__cacert_entrypoin…"   backend    48 seconds ago   Up 40 seconds (healthy)   2525/tcp
+eventflow-db-1         postgres:17-alpine       "docker-entrypoint.s…"   db         48 seconds ago   Up 46 seconds (healthy)   5432/tcp
+eventflow-frontend-1   eventflow-frontend:1.1   "docker-entrypoint.s…"   frontend   48 seconds ago   Up 24 seconds (healthy)   3000/tcp
+eventflow-proxy-1      eventflow-proxy:1.1      "/docker-entrypoint.…"   proxy      47 seconds ago   Up 11 seconds (healthy)   0.0.0.0:8088->8080/tcp, [::]:8088->8080/tcp
+
+$ curl -fsS http://localhost:8088/health
+{"status":"UP"}
+$ curl -fsS http://localhost:8088/api/events
+[]
+$ curl -fsS -I http://localhost:8088/ | head -n 6
+HTTP/1.1 200 OK
+```
+
+### D. Base interne non exposée
+```text
+$ docker compose exec -T backend getent hosts db
+172.18.0.2        db  db
+# Connexion hôte 127.0.0.1:5432 -> ConnectionRefusedError: [Errno 111] Connection refused
+```
+
+### E. Persistance (`down` vs `down -v`)
+```text
+# Création via API de l'événement id=1 ("Test Persistance Compose"), puis :
+$ docker compose down && docker volume ls | grep eventflow_pgdata && docker compose up -d
+eventflow_pgdata
+$ curl -fsS http://localhost:8088/api/events
+[{"id":1,"title":"Test Persistance Compose", ... ,"status":"PUBLIE", ...}]
+
+# Suppression volontaire du volume de test :
+$ docker compose down -v
+VOLUME_EVENTFLOW_PGDATA_SUPPRIME
+$ docker compose up -d && curl -fsS http://localhost:8088/api/events
+[]
+```
+
+### F. Incident volontaire (`DB_URL=jdbc:postgresql://localhost:5432/eventflow`)
+```text
+$ DB_URL=jdbc:postgresql://localhost:5432/eventflow docker compose up -d --force-recreate --no-deps backend
+$ docker compose ps
+eventflow-backend-1    eventflow-backend:1.1    ...   Restarting (1) 1 second ago
+$ docker compose logs --tail=40 backend
+... HikariPool-1 - Exception during pool initialization.
+Caused by: org.postgresql.util.PSQLException: Connection to localhost:5432 refused.
+```
+Diagnostic : dans un conteneur, `localhost` désigne le conteneur `backend` lui-même (pas `db`). Retour à `DB_URL=jdbc:postgresql://db:5432/eventflow` → `eventflow-backend-1` redevient `healthy` et `http://localhost:8088/health` répond `{"status":"UP"}`.
+
+### G. Arrêt propre et vérification finale
+```text
+$ docker compose down
+$ docker ps -a
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+$ docker network ls
+bridge / host / none uniquement
+```
