@@ -514,3 +514,15 @@ $ curl -fsS http://127.0.0.1:8089/health
 $ curl -fsS http://127.0.0.1:8089/api/events
 [{"id":1,"title":"Test Persistance Rollback","description":"Verification du volume pgdata_staging avant rollback","category":"DevOps","eventDate":"2026-12-15","startTime":"10:00:00","endTime":"12:00:00","location":"ISET Nabeul","imageUrl":null,"ticketPrice":0.00,"capacity":50,"availablePlaces":50,"status":"PUBLIE","teacherId":2,"teacher":{"id":2,"fullName":"Test Staging"},"actions":[],"createdAt":"2026-11-22T19:42:39.241652Z","updatedAt":"2026-11-22T19:42:39.265519Z"}]
 ```
+
+### Fusion PR #12
+```text
+*   91553a9 (origin/main, main) Merge pull request #12 from mrabetmedaziz7-eng/docs/incident
+```
+
+## Étape 8 — Bonus : déploiement automatique en staging sur tag (`feat/auto-deploy`)
+
+```text
+$ docker run --rm -u 1002:1002 -v /home/aziz/devops-l3/projet:/repo -w /repo rhysd/actionlint:1.7.7 .github/workflows/ci.yml .github/workflows/release.yml
+EXIT=0 (aucune erreur ni avertissement)
+```
