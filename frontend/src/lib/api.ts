@@ -35,7 +35,12 @@ import type {
   ValidateUserRequest,
 } from "@/types/api";
 
-export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:2525").replace(/\/+$/, "");
+export function resolveApiBaseUrl(raw: string | undefined = process.env.NEXT_PUBLIC_API_URL): string {
+  const value = raw === undefined ? "http://localhost:2525" : raw.trim();
+  return value.replace(/\/+$/, "");
+}
+
+export const API_BASE_URL = resolveApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 export class ApiError extends Error {
   readonly status: number;
@@ -89,15 +94,22 @@ export interface RequestOptions {
   signal?: AbortSignal;
 }
 
-function buildUrl(path: string, query?: Query): string {
-  const url = new URL(API_BASE_URL + path);
+export function buildUrl(path: string, query?: Query, baseUrl: string = API_BASE_URL): string {
+  const isAbsolute = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(baseUrl);
+  const normalizedPath =
+    !isAbsolute && baseUrl === "/api" && (path === "/api" || path.startsWith("/api/"))
+      ? path.slice(4) || "/"
+      : path;
+  const url = isAbsolute
+    ? new URL(baseUrl + normalizedPath)
+    : new URL(baseUrl + normalizedPath, "http://relative.local");
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value === undefined || value === null || value === "") continue;
       url.searchParams.set(key, String(value));
     }
   }
-  return url.toString();
+  return isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
 }
 
 function defaultCodeForStatus(status: number): string {
