@@ -424,3 +424,15 @@ $ WAIT_TIMEOUT=3 WAIT_INTERVAL=1 ./scripts/wait-healthy.sh
 [ERREUR] staging non sain après 3s : service frontend arrêté ou absent (projet eventflow-staging)
 WAIT_DEGRADED_EXIT=1
 ```
+
+### Fusion PR #10
+```text
+*   c23f092 (origin/main, main) Merge pull request #10 from mrabetmedaziz7-eng/feat/staging
+```
+
+## Étape 6 — Suite : workflow de publication GHCR (`feat/release`)
+
+```text
+$ docker run --rm -u 1002:1002 -v /home/aziz/devops-l3/projet:/repo -w /repo rhysd/actionlint:1.7.7 .github/workflows/ci.yml .github/workflows/release.yml
+EXIT=0 (aucune erreur ni avertissement)
+```
