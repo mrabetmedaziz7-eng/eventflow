@@ -1,0 +1,40 @@
+# Consignes et documents pédagogiques locaux
+consignes/
+
+# Fichiers d'environnement et secrets (seuls les gabarits *.example sont versionnés)
+.env
+.env.*
+*.env
+!.env.example
+!.env.*.example
+
+# Dépendances et artefacts Node / Next.js
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+
+# Dépendances et artefacts Java / Maven
+target/
+.mvn/wrapper/maven-wrapper.jar
+
+# Fichiers IDE et sondes locales
+.classpath
+.project
+.settings/
+HELP.md
+.probe/
+.idea/
+*.iml
+.vscode/
+
+# Journaux et fichiers temporaires
+*.log
+logs/
+.venv/
+__pycache__/
+.DS_Store
+*.pem
