@@ -2,6 +2,18 @@
 
 Ce fichier trace les commandes exécutées et leurs sorties vérifiées étape par étape (aucun secret enregistré).
 
+## Preuves CI — Étape 5 (références GitHub Actions)
+
+- **PR #8 (CI verte — `feat/ci` → `main`)** :
+  - Pull Request : https://github.com/mrabetmedaziz7-eng/eventflow/pull/8
+  - Exécution GitHub Actions verte (`ci`) : https://github.com/mrabetmedaziz7-eng/eventflow/actions/runs/45049386452
+  - Fusion par merge commit : `a5267c8 Merge pull request #8 from mrabetmedaziz7-eng/feat/ci`
+- **PR #9 (CI rouge de démonstration — Draft `demo/healthcheck-rouge` → `main`, NE PAS FUSIONNER)** :
+  - Pull Request : https://github.com/mrabetmedaziz7-eng/eventflow/pull/9
+  - Exécution GitHub Actions rouge (`ci`) : https://github.com/mrabetmedaziz7-eng/eventflow/actions/runs/45056419318
+  - Job `test` en échec (`docker-build` *skipped* grâce à `needs: test`) ; première erreur utile dans `Exécuter les tests backend` :
+    `HealthEndpointTest.healthEndpointReturnsUpWithoutAuthentication:25 Status expected:<200> but was:<500>`
+
 ## Étape 0 — Audit du code et préparation du monorepo
 
 ### Actions
@@ -359,4 +371,56 @@ $ npm ci && npm run lint && npx tsc --noEmit && npm test -- --reporter=default -
 # Nettoyage Docker et droits locaux
 $ docker ps -a && docker network ls
 (aucun conteneur ; réseaux bridge / host / none uniquement ; backend/target, frontend/.next et frontend/test-results détenus par aziz:aziz)
+```
+
+### 3. Exécutions GitHub Actions et fusion PR #8
+```text
+- PR #8 (feat/ci -> main) : run vert 45049386452 -> fusionnée par merge commit a5267c8
+- PR #9 (Draft demo/healthcheck-rouge -> main, NE PAS FUSIONNER) : run rouge 45056419318
+  Première erreur utile : HealthEndpointTest.healthEndpointReturnsUpWithoutAuthentication:25 Status expected:<200> but was:<500>
+  Job docker-build : skipped (needs: test)
+```
+
+## Étape 6 — Livraison et mise en service staging (PR 1 : `compose.staging.yaml` et `scripts/wait-healthy.sh`)
+
+> **Ports réservés non utilisés** : `8080` et `8081` (réservés sur le poste). Port utilisé pour le staging local : `STAGING_PORT=8089` (libre via `ss -ltn`).
+
+### 1. Validation `compose.staging.yaml` et gabarit `.env.staging.example`
+```text
+$ docker compose --env-file .env.staging.example -f compose.staging.yaml config -q
+STAGING_CONFIG_OK
+
+$ IMAGE_TAG= docker compose --env-file .env.staging.example -f compose.staging.yaml config -q
+error while interpolating services.backend.image: required variable IMAGE_TAG is missing a value: IMAGE_TAG est obligatoire
+```
+
+### 2. Tests de `scripts/wait-healthy.sh` (échec et succès sur `STAGING_PORT=8089`)
+```text
+# Cas d'échec (pile staging absente, délai 2s) :
+$ WAIT_TIMEOUT=2 WAIT_INTERVAL=1 ./scripts/wait-healthy.sh
+[ERREUR] staging non sain après 2s : service db arrêté ou absent (projet eventflow-staging)
+WAIT_FAIL_EXIT=1
+
+# Cas de succès (images taguées localement en v1.0.0-local pour test avant publication GHCR) :
+$ IMAGE_TAG=v1.0.0-local docker compose -f compose.staging.yaml up -d
+$ ./scripts/wait-healthy.sh
+[OK] db healthy
+[OK] backend healthy
+[OK] frontend healthy
+[OK] proxy healthy
+[OK] http://127.0.0.1:8089/health et / répondent
+[OK] staging sain (eventflow-staging, port 8089)
+WAIT_OK_EXIT=0
+
+$ curl -fsS http://127.0.0.1:8089/health
+{"status":"UP"}
+$ curl -fsS http://127.0.0.1:8089/api/events
+[]
+$ curl -fsS -I http://127.0.0.1:8089/ | head -n 1
+HTTP/1.1 200 OK
+
+# Cas de panne partielle (arrêt de frontend pendant que db/backend/proxy tournent) :
+$ WAIT_TIMEOUT=3 WAIT_INTERVAL=1 ./scripts/wait-healthy.sh
+[ERREUR] staging non sain après 3s : service frontend arrêté ou absent (projet eventflow-staging)
+WAIT_DEGRADED_EXIT=1
 ```
