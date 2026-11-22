@@ -4,7 +4,7 @@ import { getAvailability, almostFullThreshold } from "@/lib/events";
 
 describe("Phase 0 setup test suite", () => {
   it("translates brand keys across languages", () => {
-    expect(translate("fr", "brand.name")).toBe("EventFlow");
+    expect(translate("fr", "brand.name")).toBe("EventFlow-DEMO-CI-ROUGE");
     expect(translate("en", "brand.name")).toBe("EventFlow");
     expect(translate("ar", "brand.name")).toBe("إيفنت فلو");
   });
