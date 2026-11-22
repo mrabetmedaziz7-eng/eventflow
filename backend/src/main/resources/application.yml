@@ -12,6 +12,11 @@ server:
   port: 2525
 
 management:
+  endpoint:
+    health:
+      status:
+        http-mapping:
+          down: 500
   endpoints:
     web:
       base-path: /
