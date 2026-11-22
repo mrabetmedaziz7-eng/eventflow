@@ -7,6 +7,7 @@ required=(
   .gitignore
   .gitattributes
   .env.example
+  .github/workflows/ci.yml
   compose.yaml
   backend/.env.example
   backend/pom.xml
