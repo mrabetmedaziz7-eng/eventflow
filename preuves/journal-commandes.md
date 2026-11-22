@@ -154,3 +154,26 @@ added 482 packages, and audited 483 packages in 24s
  Test Files  7 passed (7)
       Tests  21 passed (21)
 ```
+
+### Fusion PR #4
+```text
+*   8ec2d66 (HEAD -> main, origin/main) Merge pull request #4 from mrabetmedaziz7-eng/feat/relative-api-url
+```
+
+## Étape 3c — Polices locales `@fontsource/inter` & `@fontsource/cairo` (`feat/local-fonts`)
+
+> **Note** : Code applicatif frontend modifié (`package.json`, `package-lock.json`, `src/app/layout.tsx`, `src/styles/theme.css`, et correctif 1 ligne dans `src/lib/api.ts` sur le paramètre par défaut de `resolveApiBaseUrl`).
+
+### Build hors ligne (`--network none`) & vérifications dans `node:22.19.0` (`-u 1002:1002`)
+```text
+$ npm ci
+added 484 packages, and audited 485 packages in 17s
+
+$ docker run --rm --network none -u 1002:1002 ... -e NEXT_PUBLIC_API_URL= ... node:22.19.0 bash -c "npm run build && npm run lint && npx tsc --noEmit && npm test"
+✓ Compiled successfully in 905ms
+✓ Generating static pages using 11 workers (19/19) in 648ms
+✖ 10 problems (0 errors, 10 warnings)
+# npx tsc --noEmit : 0 erreur (code 0)
+ Test Files  7 passed (7)
+      Tests  21 passed (21)
+```
