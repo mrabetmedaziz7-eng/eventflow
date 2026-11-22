@@ -113,3 +113,23 @@ A  .env
 Code de sortie: 1
 ```
 Nettoyage effectué (`git rm --cached .env && rm .env`), puis nouveau contrôle confirmé à `Code de sortie: 0`.
+
+### Fusion PR #2
+```text
+*   1b5f8d3 (HEAD -> main, origin/main) Merge pull request #2 from mrabetmedaziz7-eng/chore/project-check
+```
+
+## Étape 3a — Endpoint de santé `GET /health` (`feat/health-endpoint`)
+
+> **Note** : Code applicatif backend modifié (`pom.xml`, `application.yml`, `SecurityConfiguration.java`, `HealthEndpointTest.java`).
+
+### Tests backend en conteneur (`postgres:17-alpine` + `maven:3.9.9-eclipse-temurin-17`)
+```text
+$ ./mvnw verify
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in com.iset.events.FullScenarioIntegrationTest
+Tests run: 9, Failures: 0, Errors: 0, Skipped: 0 -- in com.iset.events.EssentialEdgeCasesTest
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in com.iset.events.HealthEndpointTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in com.iset.events.EventsApplicationTests
+Tests run: 13, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
