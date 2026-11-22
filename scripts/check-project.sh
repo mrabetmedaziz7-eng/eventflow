@@ -9,6 +9,7 @@ required=(
   .env.example
   .env.staging.example
   .github/workflows/ci.yml
+  .github/workflows/release.yml
   compose.yaml
   compose.staging.yaml
   scripts/wait-healthy.sh
