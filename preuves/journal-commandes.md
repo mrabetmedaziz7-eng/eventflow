@@ -133,3 +133,24 @@ Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 -- in com.iset.events.EventsApp
 Tests run: 13, Failures: 0, Errors: 0, Skipped: 0
 BUILD SUCCESS
 ```
+
+### Fusion PR #3
+```text
+*   e9e4993 (HEAD -> main, origin/main) Merge pull request #3 from mrabetmedaziz7-eng/feat/health-endpoint
+```
+
+## Étape 3b — Support des URL relatives dans `api.ts` (`feat/relative-api-url`)
+
+> **Note** : Code applicatif frontend modifié (`frontend/src/lib/api.ts`, `frontend/src/test/api.test.ts`).
+
+### Vérifications dans `node:22.19.0`
+```text
+$ npm ci && npm run lint && npx tsc --noEmit && npm test
+added 482 packages, and audited 483 packages in 24s
+> eslint
+✖ 10 problems (0 errors, 10 warnings)
+# npx tsc --noEmit : 0 erreur (code 0)
+> vitest run
+ Test Files  7 passed (7)
+      Tests  21 passed (21)
+```
