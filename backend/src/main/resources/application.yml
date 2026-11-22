@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: eventflow-backend
+  profiles:
+    default: dev
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:backend/.env[.properties]
+
+server:
+  port: 2525
+
+app:
+  bootstrap:
+    admin:
+      email: ${ADMIN_EMAIL:}
+      password: ${ADMIN_PASSWORD:}
