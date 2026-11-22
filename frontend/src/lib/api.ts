@@ -35,7 +35,7 @@ import type {
   ValidateUserRequest,
 } from "@/types/api";
 
-export function resolveApiBaseUrl(raw: string | undefined = process.env.NEXT_PUBLIC_API_URL): string {
+export function resolveApiBaseUrl(raw?: string): string {
   const value = raw === undefined ? "http://localhost:2525" : raw.trim();
   return value.replace(/\/+$/, "");
 }
