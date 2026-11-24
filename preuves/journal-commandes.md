@@ -526,3 +526,18 @@ $ curl -fsS http://127.0.0.1:8089/api/events
 $ docker run --rm -u 1002:1002 -v /home/aziz/devops-l3/projet:/repo -w /repo rhysd/actionlint:1.7.7 .github/workflows/ci.yml .github/workflows/release.yml
 EXIT=0 (aucune erreur ni avertissement)
 ```
+
+### Fusion PR #13 et tag `v1.2.0`
+```text
+*   71bc252 (origin/main, main, tag: v1.2.0) Merge pull request #13 from mrabetmedaziz7-eng/feat/auto-deploy
+$ docker manifest inspect ghcr.io/mrabetmedaziz7-eng/eventflow-backend:v1.2.0  # sha256:69ff4f64...
+$ docker manifest inspect ghcr.io/mrabetmedaziz7-eng/eventflow-frontend:v1.2.0 # sha256:bef77d6c...
+$ docker manifest inspect ghcr.io/mrabetmedaziz7-eng/eventflow-proxy:v1.2.0    # sha256:88349f8c...
+```
+
+## Étape 8 — Bonus : matrice Java 17 / 21 (`feat/matrix`)
+
+```text
+$ docker run --rm -u 1002:1002 -v /home/aziz/devops-l3/projet:/repo -w /repo rhysd/actionlint:1.7.7 .github/workflows/ci.yml .github/workflows/release.yml
+EXIT=0 (aucune erreur ni avertissement)
+```

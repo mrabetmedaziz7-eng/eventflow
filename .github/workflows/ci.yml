@@ -129,3 +129,46 @@ jobs:
           context: ./proxy
           push: false
           tags: eventflow-proxy:ci
+
+  test-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ['17', '21']
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: eventflow_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U postgres -d eventflow_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Java ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Exécuter les tests backend (Java ${{ matrix.java }})
+        working-directory: backend
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/eventflow_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: ci_test_password
+        run: ./mvnw -B verify
